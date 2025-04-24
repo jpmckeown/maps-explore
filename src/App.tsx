@@ -14,6 +14,17 @@ L.Icon.Default.mergeOptions({
 })
 
 
+// Default Belfast location
+const BELFAST_LOCATION = {
+  address: 'Belfast, Northern Ireland',
+  lat: 54.597,
+  lng: -5.93,
+  displayName: 'Belfast, County Antrim, Northern Ireland, United Kingdom',
+  type: 'city',
+  importance: 0.7803886541568823
+}
+
+
 type Message = {
   id: number
   text: string
@@ -102,14 +113,19 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Welcome! Mention a street address to see it on the map.", sender: 'system' }
+    { 
+      id: 1, 
+      text: "Welcome! Type in box a street address or postcode to see it on the map.", 
+      sender: 'system',
+      location: BELFAST_LOCATION
+    }
   ])
   const [inputText, setInputText] = useState('')
-  const [selectedLocation, setSelectedLocation] = useState<Message['location'] | null>(null)
-  const [mapCenter, setMapCenter] = useState<[number, number]>([51.505, -0.09])
+  const [selectedLocation, setSelectedLocation] = useState<Message['location'] | null>(BELFAST_LOCATION)
+  const [mapCenter, setMapCenter] = useState<[number, number]>([BELFAST_LOCATION.lat, BELFAST_LOCATION.lng])
   const [zoom, setZoom] = useState(13)
   const [isLoading, setIsLoading] = useState(false)
-  const [activeMessageId, setActiveMessageId] = useState<number | null>(null)
+  const [activeMessageId, setActiveMessageId] = useState<number | null>(1) // Set first message as active
 
 
   const handleSendMessage = async () => {
@@ -156,11 +172,16 @@ function App() {
 
 
   const handleNewChat = () => {
-    setMessages([{ id: 1, text: "Welcome! Mention a street address to see it on the map.", sender: 'system' }])
-    setSelectedLocation(null)
-    setMapCenter([51.505, -0.09])
+    setMessages([{ 
+      id: 1, 
+      text: "Welcome! Type in box below an address or postcode to see it on the map.", 
+      sender: 'system',
+      location: BELFAST_LOCATION 
+    }])
+    setSelectedLocation(BELFAST_LOCATION)
+    setMapCenter([BELFAST_LOCATION.lat, BELFAST_LOCATION.lng])
     setZoom(13)
-    setActiveMessageId(null)
+    setActiveMessageId(1)
   }
 
 
