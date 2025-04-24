@@ -148,6 +148,17 @@
   margin-top: 0.25rem;
   cursor: pointer;
   font-size: 0.875rem;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.location-link:hover {
+  color: #1e40af;
+}
+
+.active-location {
+  font-weight: bold;
+  color: #1e40af;
 }
 
 .input-container {

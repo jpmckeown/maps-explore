@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import './App.css'
 import L from 'leaflet'
@@ -85,6 +85,21 @@ async function geocodeAddress(query: string): Promise<Message['location'] | null
 }
 
 
+// Map controller component to handle map view changes
+function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap()
+  
+  useEffect(() => {
+    map.setView(center, zoom, {
+      animate: true,
+      duration: 1
+    })
+  }, [center, zoom, map])
+  
+  return null
+}
+
+
 function App() {
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Welcome! Mention a street address to see it on the map.", sender: 'system' }
@@ -94,6 +109,7 @@ function App() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([51.505, -0.09])
   const [zoom, setZoom] = useState(13)
   const [isLoading, setIsLoading] = useState(false)
+  const [activeMessageId, setActiveMessageId] = useState<number | null>(null)
 
 
   const handleSendMessage = async () => {
@@ -123,6 +139,7 @@ function App() {
       setSelectedLocation(location)
       setMapCenter([location.lat, location.lng])
       setZoom(16) // Zoom in closer for found addresses
+      setActiveMessageId(messages.length + 2) // Set the new message as active
     } else {
       const systemResponse: Message = {
         id: messages.length + 2,
@@ -143,6 +160,7 @@ function App() {
     setSelectedLocation(null)
     setMapCenter([51.505, -0.09])
     setZoom(13)
+    setActiveMessageId(null)
   }
 
 
@@ -151,6 +169,16 @@ function App() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+
+  const handleLocationClick = (messageId: number, location: Message['location']) => {
+    if (!location) return
+    
+    setSelectedLocation(location)
+    setMapCenter([location.lat, location.lng])
+    setZoom(16)
+    setActiveMessageId(messageId) // Track which message's location is active
   }
 
 
@@ -202,6 +230,7 @@ function App() {
                 <Popup>{selectedLocation.displayName || selectedLocation.address}</Popup>
               </Marker>
             )}
+            <MapController center={mapCenter} zoom={zoom} />
           </MapContainer>
         </div>
         
@@ -215,12 +244,10 @@ function App() {
                 <p>{message.text}</p>
                 {message.location && (
                   <div 
-                    className="location-link"
+                    className={`location-link ${activeMessageId === message.id ? 'active-location' : ''}`}
                     onClick={() => {
                       if (message.location) {
-                        setSelectedLocation(message.location)
-                        setMapCenter([message.location.lat, message.location.lng])
-                        setZoom(16)
+                        handleLocationClick(message.id, message.location)
                       }
                     }}
                   >
