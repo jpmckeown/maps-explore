@@ -22,6 +22,65 @@ type Message = {
     address: string
     lat: number
     lng: number
+    displayName?: string
+    type?: string
+    importance?: number
+  }
+}
+
+
+// Geocoding interface for Nominatim API
+type NominatimResponse = {
+  place_id: number
+  licence: string
+  osm_type: string
+  osm_id: number
+  boundingbox: string[]
+  lat: string
+  lon: string
+  display_name: string
+  class: string
+  type: string
+  importance: number
+}
+
+
+async function geocodeAddress(query: string): Promise<Message['location'] | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+        query
+      )}&format=json&limit=1&addressdetails=1`,
+      {
+        headers: {
+          'Accept-Language': 'en-US,en',
+          'User-Agent': 'BPPCityExplorer/1.0'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error('Geocoding API request failed')
+    }
+
+    const data: NominatimResponse[] = await response.json()
+
+    if (data.length === 0) {
+      return null
+    }
+
+    const location = data[0]
+    return {
+      address: query,
+      lat: parseFloat(location.lat),
+      lng: parseFloat(location.lon),
+      displayName: location.display_name,
+      type: location.type,
+      importance: location.importance
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error)
+    return null
   }
 }
 
@@ -34,10 +93,11 @@ function App() {
   const [selectedLocation, setSelectedLocation] = useState<Message['location'] | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number]>([51.505, -0.09])
   const [zoom, setZoom] = useState(13)
+  const [isLoading, setIsLoading] = useState(false)
 
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isLoading) return
     
     const newMessage: Message = {
       id: messages.length + 1,
@@ -46,39 +106,35 @@ function App() {
     }
     
     setMessages([...messages, newMessage])
+    setIsLoading(true)
     
-    // Simulate checking for address and responding
-    setTimeout(() => {
-      // This would be replaced with actual geocoding logic
-      if (inputText.toLowerCase().includes('london') || inputText.toLowerCase().includes('street')) {
-        const fakeLocation = {
-          address: inputText,
-          lat: 51.505 + (Math.random() * 0.01 - 0.005),
-          lng: -0.09 + (Math.random() * 0.01 - 0.005)
-        }
-        
-        const systemResponse: Message = {
-          id: messages.length + 2,
-          text: `I found this location: ${inputText}`,
-          sender: 'system',
-          location: fakeLocation
-        }
-        
-        setMessages(prev => [...prev, systemResponse])
-        setSelectedLocation(fakeLocation)
-        setMapCenter([fakeLocation.lat, fakeLocation.lng])
-      } else {
-        const systemResponse: Message = {
-          id: messages.length + 2,
-          text: "I couldn't identify a specific address. Try mentioning a street name or city.",
-          sender: 'system'
-        }
-        
-        setMessages(prev => [...prev, systemResponse])
+    // Use real geocoding
+    const location = await geocodeAddress(inputText)
+    
+    if (location) {
+      const systemResponse: Message = {
+        id: messages.length + 2,
+        text: `I found this location: ${location.displayName || inputText}`,
+        sender: 'system',
+        location
       }
-    }, 500)
+      
+      setMessages(prev => [...prev, systemResponse])
+      setSelectedLocation(location)
+      setMapCenter([location.lat, location.lng])
+      setZoom(16) // Zoom in closer for found addresses
+    } else {
+      const systemResponse: Message = {
+        id: messages.length + 2,
+        text: "I couldn't find that location. Please try a more specific address or landmark.",
+        sender: 'system'
+      }
+      
+      setMessages(prev => [...prev, systemResponse])
+    }
     
     setInputText('')
+    setIsLoading(false)
   }
 
 
@@ -109,16 +165,20 @@ function App() {
           <h2 className="panel-title">Location Info</h2>
           {selectedLocation ? (
             <div className="location-card">
-              <h3 className="location-title">{selectedLocation.address}</h3>
+              <h3 className="location-title">{selectedLocation.displayName || selectedLocation.address}</h3>
               <p className="location-coords">
                 Latitude: {selectedLocation.lat.toFixed(6)}<br />
                 Longitude: {selectedLocation.lng.toFixed(6)}
               </p>
               <div className="location-details">
+                {selectedLocation.type && (
+                  <p className="location-description">
+                    <strong>Type:</strong> {selectedLocation.type}
+                  </p>
+                )}
                 <p className="location-description">
-                  This location is in the vicinity of central London. 
-                  The area features historic architecture, cultural landmarks, 
-                  and urban amenities.
+                  This location can be found at the coordinates shown above.
+                  You can explore nearby areas by moving the map.
                 </p>
               </div>
             </div>
@@ -139,7 +199,7 @@ function App() {
             />
             {selectedLocation && (
               <Marker position={[selectedLocation.lat, selectedLocation.lng]}>
-                <Popup>{selectedLocation.address}</Popup>
+                <Popup>{selectedLocation.displayName || selectedLocation.address}</Popup>
               </Marker>
             )}
           </MapContainer>
@@ -160,37 +220,46 @@ function App() {
                       if (message.location) {
                         setSelectedLocation(message.location)
                         setMapCenter([message.location.lat, message.location.lng])
+                        setZoom(16)
                       }
                     }}
                   >
-                    View on map: {message.location.address}
+                    View on map: {message.location.displayName || message.location.address}
                   </div>
                 )}
               </div>
             ))}
+            {isLoading && (
+              <div className="message system-message">
+                <p>Searching for location...</p>
+              </div>
+            )}
           </div>
           
           <div className="input-container">
             <textarea
               className="message-input"
               rows={3}
-              placeholder="Type a message mentioning a street address..."
+              placeholder="Type an address or landmark (e.g., 'Eiffel Tower, Paris' or 'Times Square, NYC')"
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
+              disabled={isLoading}
             />
             <div className="button-container">
               <button
                 className="new-chat-button"
                 onClick={handleNewChat}
+                disabled={isLoading}
               >
                 New Chat
               </button>
               <button
                 className="send-button"
                 onClick={handleSendMessage}
+                disabled={isLoading}
               >
-                Send
+                {isLoading ? 'Searching...' : 'Send'}
               </button>
             </div>
           </div>
