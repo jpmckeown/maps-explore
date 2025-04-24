@@ -1,8 +1,16 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .logo {
@@ -66,7 +74,7 @@
 }
 
 .info-panel {
-  width: 33.333%;
+  width: 25%;
   padding: 1rem;
   border-right: 1px solid #e5e7eb;
   overflow: auto;
@@ -110,13 +118,13 @@
 }
 
 .map-container {
-  width: 33.333%;
+  width: 50%;
   border-right: 1px solid #e5e7eb;
   height: 100%;
 }
 
 .chat-panel {
-  width: 33.333%;
+  width: 25%;
   display: flex;
   flex-direction: column;
 }
